@@ -1,0 +1,172 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --app-bg: #f8fafc;
+  --app-surface: #ffffff;
+  --app-surface-2: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-text: #0f172a;
+  --app-muted: #64748b;
+}
+
+.dark {
+  color-scheme: dark;
+  --app-bg: #071a31;
+  --app-bg-2: #08223e;
+  --app-surface: #0d2b4d;
+  --app-surface-2: #12375f;
+  --app-surface-3: #17466f;
+  --app-border: #24527a;
+  --app-border-strong: #315f88;
+  --app-text: #f4f8ff;
+  --app-muted: #9fb4ca;
+  --app-primary: #2984ff;
+  --app-cyan: #48bfff;
+}
+
+body {
+  @apply bg-[#eef6ff] text-slate-900 antialiased dark:text-[#f4f8ff];
+}
+
+.dashboard-app {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(59, 130, 246, 0.08), transparent 28%),
+    linear-gradient(180deg, #eef6ff 0%, #f8fbff 100%);
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 12% 12%, rgba(24, 132, 255, 0.16), transparent 31%),
+    radial-gradient(circle at 88% 10%, rgba(0, 204, 222, 0.1), transparent 28%),
+    linear-gradient(135deg, #08223e 0%, #071a31 50%, #082038 100%);
+  background-attachment: fixed;
+}
+
+.dark .dashboard-app {
+  background:
+    radial-gradient(circle at 15% 8%, rgba(41, 132, 255, 0.11), transparent 25%),
+    radial-gradient(circle at 88% 12%, rgba(72, 191, 255, 0.07), transparent 22%);
+}
+
+* {
+  @apply border-slate-200 dark:border-[#24527a];
+}
+
+::selection {
+  background: rgba(41, 132, 255, 0.45);
+  color: white;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: rgba(7, 26, 49, 0.65); }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-slate-300 dark:bg-[#315f88]; }
+::-webkit-scrollbar-thumb:hover { background: #3f73a0; }
+
+@keyframes pulse-soft { 0%,100%{opacity:1} 50%{opacity:.55} }
+.animate-pulse-soft { animation: pulse-soft 1.8s ease-in-out infinite; }
+
+.theme-select option { background: #ffffff; color: #0f172a; }
+.dark .theme-select option { background: #071a31; color: #f4f8ff; }
+
+/* Harmoniza componentes escritos diretamente com utilitários slate. */
+.dark .bg-slate-950 { background-color: #071a31 !important; }
+.dark .bg-slate-900 { background-color: #0d2b4d !important; }
+.dark .bg-slate-800 { background-color: #12375f !important; }
+.dark .bg-slate-700 { background-color: #17466f !important; }
+.dark .border-slate-800 { border-color: #24527a !important; }
+.dark .border-slate-700 { border-color: #315f88 !important; }
+.dark .text-slate-500 { color: #7895b3 !important; }
+.dark .text-slate-400 { color: #9fb4ca !important; }
+.dark .text-slate-300 { color: #c5d5e7 !important; }
+.dark .text-slate-200 { color: #d9e6f4 !important; }
+.dark .hover\:bg-slate-800:hover { background-color: #17466f !important; }
+
+/* Inputs, selects e tabelas ficam no mesmo tom azul da landing page. */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+  background-color: #071a31;
+  border-color: #315f88;
+  color: #f4f8ff;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder { color: #7895b3; }
+
+.dark table thead { background-color: rgba(23, 70, 111, 0.65); }
+.dark table tbody tr { border-color: #24527a; }
+.dark table tbody tr:hover { background-color: rgba(23, 70, 111, 0.35); }
+
+.dark [role="dialog"] {
+  border-color: #315f88;
+}
+
+/* Tema claro corrigido: contraste consistente em todo o painel. */
+html:not(.dark) body {
+  background: #eef6ff;
+  color: #0f172a;
+}
+html:not(.dark) .dashboard-app {
+  color: #0f172a;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(37, 99, 235, 0.10), transparent 26%),
+    radial-gradient(circle at 88% 10%, rgba(6, 182, 212, 0.10), transparent 24%),
+    linear-gradient(180deg, #eef6ff 0%, #f8fbff 100%);
+}
+html:not(.dark) .dashboard-app h1,
+html:not(.dark) .dashboard-app h2,
+html:not(.dark) .dashboard-app h3,
+html:not(.dark) .dashboard-app h4,
+html:not(.dark) .dashboard-app strong {
+  color: #0f172a;
+}
+html:not(.dark) .dashboard-app p,
+html:not(.dark) .dashboard-app span,
+html:not(.dark) .dashboard-app label {
+  opacity: 1;
+}
+html:not(.dark) .dashboard-app .text-slate-500 { color: #52657d !important; }
+html:not(.dark) .dashboard-app .text-slate-600 { color: #3f526b !important; }
+html:not(.dark) .dashboard-app .text-slate-700 { color: #24364d !important; }
+html:not(.dark) .dashboard-app .bg-white { background-color: #ffffff !important; }
+html:not(.dark) .dashboard-app input:not([type="checkbox"]):not([type="radio"]),
+html:not(.dark) .dashboard-app select,
+html:not(.dark) .dashboard-app textarea {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+html:not(.dark) .dashboard-app input::placeholder,
+html:not(.dark) .dashboard-app textarea::placeholder { color: #718096; }
+
+.dark .dashboard-app {
+  color: #f4f8ff;
+  background:
+    radial-gradient(circle at 15% 8%, rgba(41, 132, 255, 0.14), transparent 25%),
+    radial-gradient(circle at 88% 12%, rgba(72, 191, 255, 0.09), transparent 22%),
+    linear-gradient(135deg, #08223e 0%, #071a31 52%, #082038 100%);
+}
+
+/* Sidebar usa contraste fixo em ambos os temas. */
+.sidebar-panel {
+  background: linear-gradient(180deg, #17324f 0%, #10263e 100%);
+  border-color: rgba(148, 163, 184, 0.22);
+  color: #f8fafc;
+}
+.sidebar-panel nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-panel nav::-webkit-scrollbar-thumb { background: rgba(226,232,240,.35); }
+
+/* Tema claro: neutraliza textos brancos herdados de componentes escuros. */
+html:not(.dark) .dashboard-app .text-white:not(.sidebar-panel *):not(.bg-blue-600 *) {
+  color: #0f172a !important;
+}
+html:not(.dark) .dashboard-app .bg-slate-900,
+html:not(.dark) .dashboard-app .bg-slate-950 {
+  color: #f8fafc;
+}
+html:not(.dark) .dashboard-app .border-white\/10 { border-color: #dbe5f1 !important; }
+html:not(.dark) .dashboard-app .bg-white\/5 { background-color: rgba(255,255,255,.78) !important; }

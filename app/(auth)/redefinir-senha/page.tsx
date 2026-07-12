@@ -1,0 +1,2 @@
+import { AuthCard } from "@/components/forms/auth-card";import { Input } from "@/components/ui/input";import { Button } from "@/components/ui/button";
+export default function Page(){return <AuthCard title="Redefinir senha" subtitle="Crie uma nova senha segura."><form className="grid gap-4"><label className="grid gap-1 text-sm">Nova senha<Input type="password"/></label><label className="grid gap-1 text-sm">Confirmar nova senha<Input type="password"/></label><Button type="submit" size="lg">Salvar nova senha</Button></form></AuthCard>}

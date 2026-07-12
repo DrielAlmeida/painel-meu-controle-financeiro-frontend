@@ -1,0 +1,2 @@
+import { AuthCard } from "@/components/forms/auth-card";import { Input } from "@/components/ui/input";import { Button } from "@/components/ui/button";
+export default function Page(){return <AuthCard title="Recuperar senha" subtitle="Informe seu telefone para iniciar a recuperação."><form className="grid gap-4"><label className="grid gap-1 text-sm">Telefone<Input placeholder="(27) 99999-9999"/></label><Button type="submit" size="lg">Continuar</Button></form></AuthCard>}

@@ -28,8 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     "/login",
     "/cadastro",
     "/checkout",
-    "/termos",
-    "/privacidade",
+    "/termos-de-uso",
+    "/politica-de-privacidade",
   ];
 
   const rotaPublica = rotasPublicas.some((rota) => {

@@ -1,4 +1,3 @@
-
 import Link from "@/components/router-link";
 import { useState } from "react";
 
@@ -29,19 +28,14 @@ export default function CadastroPage() {
   const [sucesso, setSucesso] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  const update = (
-    field: string,
-    value: string | boolean,
-  ) => {
+  const update = (field: string, value: string | boolean) => {
     setForm((current) => ({
       ...current,
       [field]: value,
     }));
   };
 
-  async function cadastrar(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
+  async function cadastrar(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setErro("");
@@ -52,9 +46,7 @@ export default function CadastroPage() {
       .slice(0, 11);
 
     if (localPhone.length !== 11) {
-      setErro(
-        "Informe o DDD e o número com 11 dígitos.",
-      );
+      setErro("Informe o DDD e o número com 11 dígitos.");
       return;
     }
 
@@ -64,26 +56,16 @@ export default function CadastroPage() {
     }
 
     if (form.senha.length < 8) {
-      setErro(
-        "A senha precisa ter no mínimo 8 caracteres.",
-      );
+      setErro("A senha precisa ter no mínimo 8 caracteres.");
       return;
     }
 
-    if (
-      !/[A-Za-z]/.test(form.senha) ||
-      !/\d/.test(form.senha)
-    ) {
-      setErro(
-        "A senha precisa conter pelo menos uma letra e um número.",
-      );
+    if (!/[A-Za-z]/.test(form.senha) || !/\d/.test(form.senha)) {
+      setErro("A senha precisa conter pelo menos uma letra e um número.");
       return;
     }
 
-    if (
-      !form.aceitou_termos ||
-      !form.aceitou_privacidade
-    ) {
+    if (!form.aceitou_termos || !form.aceitou_privacidade) {
       setErro(
         "Você precisa aceitar os Termos de Uso e a Política de Privacidade.",
       );
@@ -128,27 +110,18 @@ export default function CadastroPage() {
       footer={
         <>
           Já possui acesso?{" "}
-          <Link
-            className="font-semibold text-blue-600"
-            href="/login"
-          >
+          <Link className="font-semibold text-blue-600" href="/login">
             Entrar
           </Link>
         </>
       }
     >
-      <form
-        className="grid gap-4"
-        onSubmit={cadastrar}
-      >
+      <form className="grid gap-4" onSubmit={cadastrar}>
         <label className="grid gap-1 text-sm">
           Nome
-
           <Input
             value={form.nome}
-            onChange={(event) =>
-              update("nome", event.target.value)
-            }
+            onChange={(event) => update("nome", event.target.value)}
             placeholder="Seu nome"
             required
           />
@@ -156,7 +129,6 @@ export default function CadastroPage() {
 
         <label className="grid gap-1 text-sm">
           Telefone
-
           <div className="flex overflow-hidden rounded-md border border-slate-300 bg-white dark:border-[#315f88] dark:bg-[#071a31]">
             <span className="grid min-w-14 place-items-center border-r border-slate-300 bg-slate-100 px-3 font-semibold text-slate-700 dark:border-[#315f88] dark:bg-[#0d2b4d] dark:text-[#d9e6f4]">
               +55
@@ -179,38 +151,30 @@ export default function CadastroPage() {
               required
             />
           </div>
-
           <span className="text-xs text-slate-500">
-            Digite apenas DDD + número. O código 55 será
-            enviado automaticamente.
+            Digite apenas DDD + número. O código 55 será enviado
+            automaticamente.
           </span>
         </label>
 
         <label className="grid gap-1 text-sm">
           E-mail (opcional)
-
           <Input
             type="email"
             value={form.email}
-            onChange={(event) =>
-              update("email", event.target.value)
-            }
+            onChange={(event) => update("email", event.target.value)}
             placeholder="seuemail@exemplo.com"
           />
         </label>
 
         <label className="grid gap-1 text-sm">
           Senha
-
           <Input
             value={form.senha}
-            onChange={(event) =>
-              update("senha", event.target.value)
-            }
+            onChange={(event) => update("senha", event.target.value)}
             type="password"
             required
           />
-
           <span className="text-xs text-slate-500">
             Mínimo de 8 caracteres, uma letra e um número.
           </span>
@@ -218,15 +182,9 @@ export default function CadastroPage() {
 
         <label className="grid gap-1 text-sm">
           Confirme a senha
-
           <Input
             value={form.confirmar_senha}
-            onChange={(event) =>
-              update(
-                "confirmar_senha",
-                event.target.value,
-              )
-            }
+            onChange={(event) => update("confirmar_senha", event.target.value)}
             type="password"
             required
           />
@@ -235,33 +193,47 @@ export default function CadastroPage() {
         <label className="flex items-start gap-2 text-sm">
           <input
             checked={form.aceitou_termos}
-            onChange={(event) =>
-              update(
-                "aceitou_termos",
-                event.target.checked,
-              )
-            }
+            onChange={(event) => update("aceitou_termos", event.target.checked)}
             type="checkbox"
             className="mt-1"
+            required
           />
 
-          Aceito os Termos de Uso.
+          <span>
+            Concordo com os{" "}
+            <Link
+              href="/termos-de-uso"
+              className="font-semibold text-blue-600 underline underline-offset-2"
+              target="_blank"
+            >
+              Termos de Uso
+            </Link>
+            .
+          </span>
         </label>
 
         <label className="flex items-start gap-2 text-sm">
           <input
             checked={form.aceitou_privacidade}
             onChange={(event) =>
-              update(
-                "aceitou_privacidade",
-                event.target.checked,
-              )
+              update("aceitou_privacidade", event.target.checked)
             }
             type="checkbox"
             className="mt-1"
+            required
           />
 
-          Aceito a Política de Privacidade.
+          <span>
+            Concordo com a{" "}
+            <Link
+              href="/politica-de-privacidade"
+              className="font-semibold text-blue-600 underline underline-offset-2"
+              target="_blank"
+            >
+              Política de Privacidade
+            </Link>
+            .
+          </span>
         </label>
 
         {erro && (
@@ -285,14 +257,8 @@ export default function CadastroPage() {
           </div>
         )}
 
-        <Button
-          type="submit"
-          size="lg"
-          disabled={carregando}
-        >
-          {carregando
-            ? "Cadastrando..."
-            : "Criar minha senha"}
+        <Button type="submit" size="lg" disabled={carregando}>
+          {carregando ? "Cadastrando..." : "Criar minha senha"}
         </Button>
       </form>
     </AuthCard>

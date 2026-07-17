@@ -386,7 +386,7 @@ export default function AdminUsuariosPage() {
                       >
                         <KeyRound size={14} />
                       </Button>
-                      {/* <Button
+                      <Button
                         size="sm"
                         variant="danger"
                         disabled={item.id === usuario?.id}
@@ -395,7 +395,7 @@ export default function AdminUsuariosPage() {
                       >
                         <Trash2 size={14} />
                         Excluir
-                      </Button> */}
+                      </Button>
                     </div>
                   </td>
                 </tr>

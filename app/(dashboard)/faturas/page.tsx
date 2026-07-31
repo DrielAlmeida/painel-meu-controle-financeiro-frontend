@@ -16,6 +16,10 @@ import {
   type MinhaAssinatura,
 } from "@/services/billing-service";
 import { formatCurrency } from "@/lib/utils";
+import {
+  getSafePaymentUrl,
+  requireSafePaymentUrl,
+} from "@/lib/payment-url";
 import { Input } from "@/components/ui/input";
 import {
   publicPlansService,
@@ -95,7 +99,7 @@ export default function FaturasPage() {
         planoSelecionado,
         documento || undefined,
       );
-      window.location.assign(result.invoice_url);
+      window.location.assign(requireSafePaymentUrl(result.invoice_url));
     } catch (e) {
       setErro(
         e instanceof Error ? e.message : "Não foi possível gerar a renovação.",
@@ -180,7 +184,16 @@ export default function FaturasPage() {
               {assinatura.invoice_url && (
                 <Button
                   variant="secondary"
-                  onClick={() => window.open(assinatura.invoice_url!, "_blank")}
+                  onClick={() => {
+                    const safeUrl = getSafePaymentUrl(assinatura.invoice_url);
+                    if (!safeUrl) {
+                      setErro(
+                        "O link da fatura não pertence ao ambiente seguro do Asaas.",
+                      );
+                      return;
+                    }
+                    window.open(safeUrl, "_blank", "noopener,noreferrer");
+                  }}
                 >
                   <ExternalLink size={16} /> Abrir fatura
                 </Button>

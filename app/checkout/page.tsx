@@ -18,6 +18,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { ApiError } from "@/lib/api";
+import {
+  getSafePaymentUrl,
+  requireSafePaymentUrl,
+} from "@/lib/payment-url";
 import { authService } from "@/services/auth-service";
 import { pagamentosService } from "@/services/pagamentos";
 import {
@@ -37,6 +41,16 @@ function digits(value: string) {
   return value.replace(/\D/g, "");
 }
 
+function localPhoneDigits(value: string) {
+  const normalized = digits(value);
+  const withoutCountryCode =
+    normalized.length > 11 && normalized.startsWith("55")
+      ? normalized.slice(2)
+      : normalized;
+
+  return withoutCountryCode.slice(0, 11);
+}
+
 const initialForm = {
   nome: "",
   telefone: "",
@@ -52,7 +66,7 @@ function CheckoutContent() {
   const params = useSearchParams();
   const requestedId = Number(params.get("plano_id") || 0) || null;
   const resume = params.get("resume") === "1";
-  const { usuario, recarregar } = useAuth();
+  const { usuario, carregando: authLoading, recarregar } = useAuth();
   const [planos, setPlanos] = useState<PlanoPublico[]>([]);
   const [planId, setPlanId] = useState<number | null>(requestedId);
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -89,6 +103,17 @@ function CheckoutContent() {
         setError("Não foi possível carregar os planos disponíveis."),
       );
   }, [requestedId]);
+
+  useEffect(() => {
+    if (!usuario || getPendingCheckout()) return;
+
+    setForm((current) => ({
+      ...current,
+      nome: current.nome || usuario.nome,
+      telefone: current.telefone || localPhoneDigits(usuario.telefone),
+      email: current.email || usuario.email || "",
+    }));
+  }, [usuario]);
 
   const selected = useMemo(
     () => planos.find((item) => item.id === planId) ?? null,
@@ -130,15 +155,16 @@ function CheckoutContent() {
       usuario_id: userId,
     });
 
-    clearPendingCheckout();
-
     if (assinatura.invoice_url) {
+      const safeUrl = requireSafePaymentUrl(assinatura.invoice_url);
+      clearPendingCheckout();
       setEtapa("Abrindo o ambiente seguro de pagamento...");
-      window.location.assign(assinatura.invoice_url);
+      window.location.assign(safeUrl);
       return;
     }
 
     if (gratis) {
+      clearPendingCheckout();
       await recarregar();
       window.location.assign("/visao-geral");
       return;
@@ -153,8 +179,15 @@ function CheckoutContent() {
     try {
       const assinatura = await billingService.minhaAssinatura();
       if (assinatura?.invoice_url) {
+        const safeUrl = getSafePaymentUrl(assinatura.invoice_url);
+        if (!safeUrl) {
+          setError(
+            "O link da fatura não pertence ao ambiente seguro do Asaas.",
+          );
+          return true;
+        }
         setEtapa("Abrindo sua fatura pendente...");
-        window.location.assign(assinatura.invoice_url);
+        window.location.assign(safeUrl);
         return true;
       }
       if (assinatura?.status === "ativa") {
@@ -179,7 +212,7 @@ function CheckoutContent() {
       return;
     }
 
-    const localPhone = digits(form.telefone).replace(/^55/, "").slice(0, 11);
+    const localPhone = localPhoneDigits(form.telefone);
     const document = digits(form.cpf_cnpj);
 
     if (localPhone.length !== 11) {
@@ -310,25 +343,31 @@ function CheckoutContent() {
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Link>
           <Link
-            href="/login"
+            href={usuario ? "/visao-geral" : "/login"}
             className="rounded-xl border border-white/20 px-4 py-2 text-sm font-semibold hover:bg-white/10"
           >
-            Já tenho conta
+            {usuario ? "Ir para o painel" : "Já tenho conta"}
           </Link>
         </div>
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_.78fr]">
           <section className="rounded-3xl border border-white/10 bg-[#0d2b4d] p-6 sm:p-8">
             <div className="mb-8">
               <span className="text-sm font-bold uppercase tracking-[.18em] text-blue-400">
-                Cadastro e pagamento
+                {usuario ? "Plano e pagamento" : "Cadastro e pagamento"}
               </span>
               <h1 className="mt-2 text-3xl font-black">
-                {authenticatedResume ? "Concluir pagamento" : "Crie sua conta"}
+                {usuario
+                  ? authenticatedResume
+                    ? "Concluir pagamento"
+                    : "Escolha seu plano"
+                  : "Crie sua conta"}
               </h1>
               <p className="mt-2 text-[#9fb4ca]">
                 {authenticatedResume
                   ? "Seu cadastro foi recuperado. Vamos concluir a ativação do plano."
-                  : "Sua conta será vinculada ao plano selecionado."}
+                  : usuario
+                    ? "Confirme seus dados e escolha o plano que deseja ativar."
+                    : "Sua conta será vinculada ao plano selecionado."}
               </p>
             </div>
             <form onSubmit={submit} className="grid gap-5">
@@ -355,9 +394,7 @@ function CheckoutContent() {
                       onChange={(e) =>
                         update(
                           "telefone",
-                          digits(e.target.value)
-                            .replace(/^55/, "")
-                            .slice(0, 11),
+                          localPhoneDigits(e.target.value),
                         )
                       }
                       placeholder="27999999999"
@@ -390,7 +427,7 @@ function CheckoutContent() {
                   disabled={loading}
                 />
               </label>
-              {!authenticatedResume && (
+              {!authLoading && !usuario && (
                 <div className="grid gap-5 sm:grid-cols-2">
                   {[
                     ["senha", "Senha", mostrarSenha, setMostrarSenha],
@@ -431,7 +468,7 @@ function CheckoutContent() {
                   ))}
                 </div>
               )}
-              {!authenticatedResume && (
+              {!authLoading && !usuario && (
                 <div className="grid gap-3 text-sm text-[#c5d5e7]">
                   <label className="flex items-start gap-3">
                     <input
@@ -490,16 +527,18 @@ function CheckoutContent() {
                 </div>
               )}
               <button
-                disabled={loading || !selected}
+                disabled={loading || authLoading || !selected}
                 className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 font-bold hover:bg-blue-500 disabled:opacity-60"
               >
                 <CreditCard className="h-5 w-5" />
-                {loading
-                  ? "Preparando..."
-                  : Number(selected?.valor_mensal) === 0 ||
-                      Number(selected?.dias_gratis || 0) > 0
-                    ? "Ativar período grátis"
-                    : "Continuar para o pagamento"}
+                {authLoading
+                  ? "Carregando sua conta..."
+                  : loading
+                    ? "Preparando..."
+                    : Number(selected?.valor_mensal) === 0 ||
+                        Number(selected?.dias_gratis || 0) > 0
+                      ? "Ativar período grátis"
+                      : "Continuar para o pagamento"}
               </button>
             </form>
           </section>

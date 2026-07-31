@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     "/",
     "/login",
     "/cadastro",
+    "/esqueci-minha-senha",
+    "/redefinir-senha",
     "/checkout",
     "/termos-de-uso",
     "/politica-de-privacidade",

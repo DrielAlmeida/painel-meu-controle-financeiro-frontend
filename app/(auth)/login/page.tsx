@@ -36,7 +36,7 @@ export default function LoginPage() {
   }
 
   return (
-    <AuthCard title="Entrar" subtitle="Acesse usando seu telefone e senha." footer={<>Ainda não possui senha? <Link className="font-semibold text-blue-600" href="/cadastro">Criar acesso</Link></>}>
+    <AuthCard title="Entrar" subtitle="Acesse usando seu telefone e senha." footer={<>Ainda não possui senha? <Link className="font-semibold text-blue-600" href="/checkout">Criar acesso</Link></>}>
       <form className="grid gap-4" onSubmit={entrar}>
         <label className="grid gap-1 text-sm">Telefone<Input value={telefone} onChange={e=>setTelefone(e.target.value)} placeholder="(27) 99999-9999" inputMode="tel" required/></label>
         <label className="grid gap-1 text-sm">

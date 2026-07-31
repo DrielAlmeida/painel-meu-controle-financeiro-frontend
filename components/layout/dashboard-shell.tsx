@@ -1,14 +1,16 @@
-
 import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { useAuth } from "@/components/auth/auth-provider";
 import { SubscriptionAlert } from "@/components/dashboard/subscription-alert";
 import { PendingCheckoutAlert } from "@/components/dashboard/pending-checkout-alert";
+import { usePathname } from "@/lib/navigation";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { usuario, carregando } = useAuth();
+  const pathname = usePathname();
 
   if (carregando || !usuario) {
     return (
@@ -16,6 +18,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         Validando sua sessão...
       </div>
     );
+  }
+
+  const rotaAdministrativa =
+    pathname === "/admin" || pathname.startsWith("/admin/");
+
+  if (rotaAdministrativa && !usuario.administrador) {
+    return <Navigate to="/visao-geral" replace />;
   }
 
   return (

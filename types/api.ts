@@ -7,7 +7,18 @@ export interface Usuario {
   administrador: boolean;
 }
 
-export interface AuthResponse { usuario: Usuario; mensagem: string }
+export interface LoginResponse {
+  usuario: Usuario;
+  mensagem: string;
+  csrf_token: string;
+}
+
+export interface CadastroResponse {
+  usuario: Usuario;
+  mensagem: string;
+  csrf_token: null;
+}
+
 export interface LoginPayload { telefone: string; senha: string }
 export interface CadastroPayload {
   nome: string;

@@ -1,9 +1,46 @@
-import { apiRequest } from "@/lib/api";
-import type { AuthResponse, CadastroPayload, LoginPayload, Usuario } from "@/types/api";
+import {
+  apiRequest,
+  clearCsrfToken,
+  setCsrfToken,
+} from "@/lib/api";
+import type {
+  CadastroPayload,
+  CadastroResponse,
+  LoginPayload,
+  LoginResponse,
+  Usuario,
+} from "@/types/api";
 
 export const authService = {
-  login: (payload: LoginPayload) => apiRequest<AuthResponse>("/auth/login", { method: "POST", body: JSON.stringify(payload) }),
-  cadastro: (payload: CadastroPayload) => apiRequest<AuthResponse>("/auth/cadastro", { method: "POST", body: JSON.stringify(payload) }),
-  me: () => apiRequest<Usuario>("/auth/me"),
-  logout: () => apiRequest<{ mensagem: string }>("/auth/logout", { method: "POST" }),
+  login: async (payload: LoginPayload) => {
+    const response = await apiRequest<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      csrf: false,
+      handleUnauthorized: false,
+    });
+    setCsrfToken(response.csrf_token);
+    return response;
+  },
+
+  cadastro: (payload: CadastroPayload) =>
+    apiRequest<CadastroResponse>("/auth/cadastro", {
+      method: "POST",
+      body: JSON.stringify(payload),
+      csrf: false,
+      handleUnauthorized: false,
+    }),
+
+  me: () =>
+    apiRequest<Usuario>("/auth/me", { handleUnauthorized: false }),
+
+  logout: async () => {
+    try {
+      return await apiRequest<{ mensagem: string }>("/auth/logout", {
+        method: "POST",
+      });
+    } finally {
+      clearCsrfToken();
+    }
+  },
 };

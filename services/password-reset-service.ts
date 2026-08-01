@@ -25,6 +25,8 @@ export async function solicitarCodigo(
   return apiRequest("/password/request", {
     method: "POST",
     body: JSON.stringify(dados),
+    csrf: false,
+    handleUnauthorized: false,
   });
 }
 
@@ -34,6 +36,8 @@ export async function validarCodigo(
   return apiRequest<ValidateResponse>("/password/validate", {
     method: "POST",
     body: JSON.stringify(dados),
+    csrf: false,
+    handleUnauthorized: false,
   });
 }
 
@@ -43,5 +47,7 @@ export async function alterarSenha(
   return apiRequest("/password/confirm", {
     method: "POST",
     body: JSON.stringify(dados),
+    csrf: false,
+    handleUnauthorized: false,
   });
 }

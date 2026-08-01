@@ -1,9 +1,5 @@
 export interface PendingCheckout {
   planId: number;
-  nome: string;
-  telefone: string;
-  email: string | null;
-  cpfCnpj: string;
   accountCreated: boolean;
   updatedAt: string;
 }
@@ -11,23 +7,25 @@ export interface PendingCheckout {
 const STORAGE_KEY = "painel-financeiro:checkout-pendente";
 const MAX_PENDING_AGE_MS = 2 * 60 * 60 * 1000;
 
-function isPendingCheckout(value: unknown): value is PendingCheckout {
-  if (!value || typeof value !== "object") return false;
+function parsePendingCheckout(value: unknown): PendingCheckout | null {
+  if (!value || typeof value !== "object") return null;
 
   const pending = value as Record<string, unknown>;
-  return (
-    typeof pending.planId === "number" &&
-    Number.isSafeInteger(pending.planId) &&
-    pending.planId > 0 &&
-    typeof pending.nome === "string" &&
-    typeof pending.telefone === "string" &&
-    pending.telefone.length > 0 &&
-    (pending.email === null || typeof pending.email === "string") &&
-    typeof pending.cpfCnpj === "string" &&
-    pending.cpfCnpj.length > 0 &&
-    typeof pending.accountCreated === "boolean" &&
-    typeof pending.updatedAt === "string"
-  );
+  if (
+    typeof pending.planId !== "number" ||
+    !Number.isSafeInteger(pending.planId) ||
+    pending.planId <= 0 ||
+    typeof pending.accountCreated !== "boolean" ||
+    typeof pending.updatedAt !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    planId: pending.planId,
+    accountCreated: pending.accountCreated,
+    updatedAt: pending.updatedAt,
+  };
 }
 
 function removeLegacyStorage() {
@@ -35,6 +33,15 @@ function removeLegacyStorage() {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
     // O checkout continua funcionando mesmo quando o navegador bloqueia storage.
+  }
+}
+
+function writeStoredValue(value: PendingCheckout) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    removeLegacyStorage();
+  } catch {
+    removeLegacyStorage();
   }
 }
 
@@ -48,7 +55,6 @@ function readStoredValue() {
 
     const legacy = localStorage.getItem(STORAGE_KEY);
     removeLegacyStorage();
-    if (legacy) sessionStorage.setItem(STORAGE_KEY, legacy);
     return legacy;
   } catch {
     removeLegacyStorage();
@@ -61,13 +67,13 @@ export function getPendingCheckout(): PendingCheckout | null {
     const raw = readStoredValue();
     if (!raw) return null;
 
-    const parsed: unknown = JSON.parse(raw);
-    if (!isPendingCheckout(parsed)) {
+    const pending = parsePendingCheckout(JSON.parse(raw));
+    if (!pending) {
       clearPendingCheckout();
       return null;
     }
 
-    const updatedAt = Date.parse(parsed.updatedAt);
+    const updatedAt = Date.parse(pending.updatedAt);
     if (
       !Number.isFinite(updatedAt) ||
       Date.now() - updatedAt > MAX_PENDING_AGE_MS
@@ -76,7 +82,9 @@ export function getPendingCheckout(): PendingCheckout | null {
       return null;
     }
 
-    return parsed;
+    // Remove PII de objetos persistidos por versões antigas.
+    writeStoredValue(pending);
+    return pending;
   } catch {
     clearPendingCheckout();
     return null;
@@ -86,22 +94,14 @@ export function getPendingCheckout(): PendingCheckout | null {
 export function savePendingCheckout(
   data: Omit<PendingCheckout, "updatedAt">,
 ) {
-  try {
-    sessionStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ ...data, updatedAt: new Date().toISOString() }),
-    );
-    removeLegacyStorage();
-  } catch {
-    removeLegacyStorage();
-  }
+  writeStoredValue({ ...data, updatedAt: new Date().toISOString() });
   window.dispatchEvent(new Event("checkout-pendente-alterado"));
 }
 
 export function markPendingAccountCreated() {
   const current = getPendingCheckout();
   if (!current) return;
-  savePendingCheckout({ ...current, accountCreated: true });
+  savePendingCheckout({ planId: current.planId, accountCreated: true });
 }
 
 export function clearPendingCheckout() {

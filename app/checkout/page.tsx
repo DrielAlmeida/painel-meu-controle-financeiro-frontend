@@ -5,7 +5,6 @@ import {
   Suspense,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import {
@@ -36,6 +35,7 @@ import {
   savePendingCheckout,
 } from "@/services/checkout-progress";
 import { useAuth } from "@/components/auth/auth-provider";
+import { SubscriptionBlockBanner } from "@/components/billing/subscription-block-banner";
 
 function digits(value: string) {
   return value.replace(/\D/g, "");
@@ -65,8 +65,12 @@ const initialForm = {
 function CheckoutContent() {
   const params = useSearchParams();
   const requestedId = Number(params.get("plano_id") || 0) || null;
-  const resume = params.get("resume") === "1";
-  const { usuario, carregando: authLoading, recarregar } = useAuth();
+  const {
+    usuario,
+    carregando: authLoading,
+    entrar: autenticar,
+    recarregar,
+  } = useAuth();
   const [planos, setPlanos] = useState<PlanoPublico[]>([]);
   const [planId, setPlanId] = useState<number | null>(requestedId);
   const [mostrarSenha, setMostrarSenha] = useState(false);
@@ -75,22 +79,10 @@ function CheckoutContent() {
   const [loading, setLoading] = useState(false);
   const [etapa, setEtapa] = useState("");
   const [error, setError] = useState("");
-  const autoResumeStarted = useRef(false);
 
   useEffect(() => {
     const pending = getPendingCheckout();
-    if (pending) {
-      setForm((current) => ({
-        ...current,
-        nome: pending.nome,
-        telefone: pending.telefone,
-        email: pending.email ?? "",
-        cpf_cnpj: pending.cpfCnpj,
-        aceitou_termos: true,
-        aceitou_privacidade: true,
-      }));
-      if (!requestedId) setPlanId(pending.planId);
-    }
+    if (pending && !requestedId) setPlanId(pending.planId);
 
     publicPlansService
       .listar()
@@ -105,7 +97,7 @@ function CheckoutContent() {
   }, [requestedId]);
 
   useEffect(() => {
-    if (!usuario || getPendingCheckout()) return;
+    if (!usuario) return;
 
     setForm((current) => ({
       ...current,
@@ -119,40 +111,30 @@ function CheckoutContent() {
     () => planos.find((item) => item.id === planId) ?? null,
     [planos, planId],
   );
+  const selectedIsFree = Boolean(
+    selected &&
+      (Number(selected.valor_mensal) === 0 ||
+        Number(selected.dias_gratis || 0) > 0),
+  );
+
   function update(name: string, value: string | boolean) {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
   async function finalizarAssinatura(
-    userId: number,
     plano: PlanoPublico,
-    localPhone: string,
     document: string,
   ) {
     const gratis =
       Number(plano.valor_mensal) === 0 || Number(plano.dias_gratis || 0) > 0;
-    let clienteId: string | null = null;
-
-    if (!gratis) {
-      setEtapa("Preparando seu cadastro no Asaas...");
-      const cliente = await pagamentosService.criarOuLocalizarCliente({
-        nome: form.nome.trim(),
-        cpf_cnpj: document,
-        email: form.email.trim().toLowerCase() || null,
-        telefone: localPhone,
-        usuario_id: userId,
-      });
-      clienteId = cliente.cliente_id;
-    }
 
     setEtapa(
       gratis ? "Ativando seu período grátis..." : "Gerando sua assinatura...",
     );
     const assinatura = await pagamentosService.criarAssinatura({
-      cliente_id: clienteId,
       plano_id: plano.id,
       forma_pagamento: "UNDEFINED",
-      usuario_id: userId,
+      ...(gratis ? {} : { cpf_cnpj: document }),
     });
 
     if (assinatura.invoice_url) {
@@ -163,16 +145,9 @@ function CheckoutContent() {
       return;
     }
 
-    if (gratis) {
-      clearPendingCheckout();
-      await recarregar();
-      window.location.assign("/visao-geral");
-      return;
-    }
-
-    throw new Error(
-      "A assinatura foi criada, mas o link de pagamento não foi retornado.",
-    );
+    clearPendingCheckout();
+    await recarregar();
+    window.location.assign(gratis ? "/visao-geral" : "/faturas");
   }
 
   async function tratarAssinaturaExistente() {
@@ -205,7 +180,7 @@ function CheckoutContent() {
     return false;
   }
 
-  async function processar(isAutomaticResume = false) {
+  async function processar() {
     setError("");
     if (!selected) {
       setError("Selecione um plano válido.");
@@ -215,16 +190,16 @@ function CheckoutContent() {
     const localPhone = localPhoneDigits(form.telefone);
     const document = digits(form.cpf_cnpj);
 
-    if (localPhone.length !== 11) {
+    if (!usuario && localPhone.length !== 11) {
       setError("Informe o DDD e o telefone com 11 dígitos.");
       return;
     }
-    if (![11, 14].includes(document.length)) {
+    if (!selectedIsFree && ![11, 14].includes(document.length)) {
       setError("Informe um CPF ou CNPJ com 11 ou 14 dígitos.");
       return;
     }
 
-    if (!usuario && !isAutomaticResume) {
+    if (!usuario) {
       if (
         form.senha.length < 8 ||
         !/[A-Za-z]/.test(form.senha) ||
@@ -250,21 +225,15 @@ function CheckoutContent() {
     const telefoneCompleto = `55${localPhone}`;
     savePendingCheckout({
       planId: selected.id,
-      nome: form.nome.trim(),
-      telefone: localPhone,
-      email: form.email.trim().toLowerCase() || null,
-      cpfCnpj: document,
       accountCreated: Boolean(usuario),
     });
 
     setLoading(true);
     try {
-      let userId = usuario?.id ?? null;
-
-      if (!userId) {
+      if (!usuario) {
         setEtapa("Criando sua conta...");
         try {
-          const cadastro = await authService.cadastro({
+          await authService.cadastro({
             nome: form.nome.trim(),
             telefone: telefoneCompleto,
             email: form.email.trim().toLowerCase() || null,
@@ -273,30 +242,37 @@ function CheckoutContent() {
             aceitou_termos: form.aceitou_termos,
             aceitou_privacidade: form.aceitou_privacidade,
           });
-          userId = cadastro.usuario.id;
           markPendingAccountCreated();
-          await recarregar();
         } catch (err) {
           if (!(err instanceof ApiError) || err.status !== 409) throw err;
-
-          setEtapa("Conta já encontrada. Entrando para continuar...");
-          const login = await authService.login({
-            telefone: telefoneCompleto,
-            senha: form.senha,
-          });
-          userId = login.usuario.id;
-          markPendingAccountCreated();
-          await recarregar();
         }
+
+        setEtapa("Entrando para iniciar o pagamento...");
+        await autenticar({ telefone: telefoneCompleto, senha: form.senha });
+        markPendingAccountCreated();
       }
 
-      if (!userId)
-        throw new Error("Não foi possível identificar o usuário do cadastro.");
-      await finalizarAssinatura(userId, selected, localPhone, document);
+      await finalizarAssinatura(selected, document);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         const handled = await tratarAssinaturaExistente();
         if (handled) return;
+      }
+
+      if (err instanceof ApiError && err.status === 404) {
+        try {
+          const updatedPlans = (await publicPlansService.listar()).filter(
+            (plan) => plan.ativo,
+          );
+          setPlanos(updatedPlans);
+          setPlanId((current) =>
+            updatedPlans.some((plan) => plan.id === current)
+              ? current
+              : (updatedPlans[0]?.id ?? null),
+          );
+        } catch {
+          // Mantém o erro original da assinatura, sem repetir a mutação.
+        }
       }
 
       const message =
@@ -306,9 +282,14 @@ function CheckoutContent() {
             ? err.message
             : "Não foi possível concluir o cadastro.";
 
-      setError(
-        `${message} Seu cadastro foi preservado. Entre novamente e use o aviso “Concluir pagamento”.`,
-      );
+      const recoveryHint =
+        err instanceof ApiError && err.status === 404
+          ? "A lista de planos foi atualizada; selecione uma opção válida."
+          : getPendingCheckout()?.accountCreated
+            ? "Sua conta e o plano foram preservados. Revise os dados e tente novamente."
+            : "Revise os dados informados e tente novamente.";
+
+      setError(`${message} ${recoveryHint}`);
       setEtapa("");
     } finally {
       setLoading(false);
@@ -317,16 +298,8 @@ function CheckoutContent() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    await processar(false);
+    await processar();
   }
-
-  useEffect(() => {
-    if (!resume || !usuario || !selected || autoResumeStarted.current) return;
-    const pending = getPendingCheckout();
-    if (!pending?.accountCreated) return;
-    autoResumeStarted.current = true;
-    void processar(true);
-  }, [resume, usuario, selected]);
 
   const authenticatedResume = Boolean(
     usuario && getPendingCheckout()?.accountCreated,
@@ -349,6 +322,7 @@ function CheckoutContent() {
             {usuario ? "Ir para o painel" : "Já tenho conta"}
           </Link>
         </div>
+        <SubscriptionBlockBanner className="mt-6" />
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_.78fr]">
           <section className="rounded-3xl border border-white/10 bg-[#0d2b4d] p-6 sm:p-8">
             <div className="mb-8">
@@ -364,7 +338,7 @@ function CheckoutContent() {
               </h1>
               <p className="mt-2 text-[#9fb4ca]">
                 {authenticatedResume
-                  ? "Seu cadastro foi recuperado. Vamos concluir a ativação do plano."
+                  ? "Seu cadastro e plano foram recuperados. Por segurança, informe novamente seu CPF/CNPJ para concluir."
                   : usuario
                     ? "Confirme seus dados e escolha o plano que deseja ativar."
                     : "Sua conta será vinculada ao plano selecionado."}
@@ -377,8 +351,8 @@ function CheckoutContent() {
                   className="rounded-xl border border-white/10 bg-[#071a31] px-4 py-3 outline-none focus:border-blue-500"
                   value={form.nome}
                   onChange={(e) => update("nome", e.target.value)}
-                  required
-                  disabled={loading}
+                  required={!usuario}
+                  disabled={loading || Boolean(usuario)}
                 />
               </label>
               <div className="grid gap-5 sm:grid-cols-2">
@@ -398,20 +372,26 @@ function CheckoutContent() {
                         )
                       }
                       placeholder="27999999999"
-                      required
-                      disabled={loading}
+                      required={!usuario}
+                      disabled={loading || Boolean(usuario)}
                     />
                   </div>
                 </label>
                 <label className="grid gap-2 text-sm">
                   CPF ou CNPJ
+                  {selectedIsFree && (
+                    <span className="text-xs text-[#9fb4ca]">
+                      Não é necessário para o período gratuito.
+                    </span>
+                  )}
                   <input
                     className="rounded-xl border border-white/10 bg-[#071a31] px-4 py-3 outline-none"
                     value={form.cpf_cnpj}
                     onChange={(e) =>
                       update("cpf_cnpj", digits(e.target.value).slice(0, 14))
                     }
-                    required
+                    inputMode="numeric"
+                    required={!selectedIsFree}
                     disabled={loading}
                   />
                 </label>
@@ -423,8 +403,8 @@ function CheckoutContent() {
                   className="rounded-xl border border-white/10 bg-[#071a31] px-4 py-3 outline-none"
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
-                  required
-                  disabled={loading}
+                  required={!usuario}
+                  disabled={loading || Boolean(usuario)}
                 />
               </label>
               {!authLoading && !usuario && (
@@ -535,8 +515,7 @@ function CheckoutContent() {
                   ? "Carregando sua conta..."
                   : loading
                     ? "Preparando..."
-                    : Number(selected?.valor_mensal) === 0 ||
-                        Number(selected?.dias_gratis || 0) > 0
+                    : selectedIsFree
                       ? "Ativar período grátis"
                       : "Continuar para o pagamento"}
               </button>

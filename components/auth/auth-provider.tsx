@@ -21,6 +21,7 @@ import type { LoginPayload, Usuario } from "@/types/api";
 type AuthContextValue = {
   usuario: Usuario | null;
   carregando: boolean;
+  erroSessao: string | null;
   entrar: (payload: LoginPayload) => Promise<Usuario>;
   recarregar: () => Promise<void>;
   sair: () => Promise<void>;
@@ -49,19 +50,44 @@ function isPublicRoute(pathname: string) {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
+  const [sessaoInvalida, setSessaoInvalida] = useState(false);
+  const [erroSessao, setErroSessao] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
   const recarregar = useCallback(async () => {
     setCarregando(true);
+    setSessaoInvalida(false);
+    setErroSessao(null);
+
     try {
       const currentUser = await authService.me();
-      await refreshCsrfToken();
       setUsuario(currentUser);
+
+      try {
+        await refreshCsrfToken();
+      } catch (error) {
+        clearCsrfToken();
+        if (error instanceof ApiError && error.status === 401) {
+          clearSubscriptionBlock();
+          setUsuario(null);
+          setSessaoInvalida(true);
+        }
+      }
     } catch (error) {
-      if (error instanceof ApiError && error.status === 402) return;
-      clearCsrfToken();
-      setUsuario(null);
+      if (error instanceof ApiError && error.status === 401) {
+        clearCsrfToken();
+        clearSubscriptionBlock();
+        setUsuario(null);
+        setSessaoInvalida(true);
+        return;
+      }
+
+      setErroSessao(
+        error instanceof ApiError
+          ? error.message
+          : "Não foi possível validar sua sessão. Verifique sua conexão e tente novamente.",
+      );
     } finally {
       setCarregando(false);
     }
@@ -71,6 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const response = await authService.login(payload);
     clearSubscriptionBlock();
     setUsuario(response.usuario);
+    setSessaoInvalida(false);
+    setErroSessao(null);
     setCarregando(false);
     return response.usuario;
   }, []);
@@ -84,6 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearCsrfToken();
       clearSubscriptionBlock();
       setUsuario(null);
+      setSessaoInvalida(true);
+      setErroSessao(null);
       setCarregando(false);
       router.replace("/login");
     };
@@ -100,10 +130,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   useEffect(() => {
-    if (!carregando && !usuario && !isPublicRoute(pathname)) {
+    if (
+      !carregando &&
+      sessaoInvalida &&
+      !usuario &&
+      !isPublicRoute(pathname)
+    ) {
       router.replace("/login");
     }
-  }, [carregando, pathname, router, usuario]);
+  }, [carregando, pathname, router, sessaoInvalida, usuario]);
 
   const sair = useCallback(async () => {
     try {
@@ -113,14 +148,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearSubscriptionBlock();
       clearPendingCheckout();
       setUsuario(null);
+      setSessaoInvalida(true);
+      setErroSessao(null);
       setCarregando(false);
       router.replace("/login");
     }
   }, [router]);
 
   const value = useMemo(
-    () => ({ usuario, carregando, entrar, recarregar, sair }),
-    [usuario, carregando, entrar, recarregar, sair],
+    () => ({
+      usuario,
+      carregando,
+      erroSessao,
+      entrar,
+      recarregar,
+      sair,
+    }),
+    [usuario, carregando, erroSessao, entrar, recarregar, sair],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

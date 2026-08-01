@@ -25,7 +25,7 @@ export function PendingCheckoutAlert() {
         <span><strong>Seu cadastro ainda não foi concluído.</strong> Vá até o pagamento para ativar o plano escolhido.</span>
       </span>
       <div className="flex items-center gap-2">
-        <Link href={`/checkout?resume=1&plano_id=${pending.planId}`} className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700">
+        <Link href={`/checkout?plano_id=${pending.planId}`} className="inline-flex items-center gap-1 rounded-lg bg-amber-600 px-3 py-2 font-bold text-white hover:bg-amber-700">
           Concluir pagamento <ArrowRight size={15} />
         </Link>
         <button type="button" onClick={clearPendingCheckout} className="grid h-9 w-9 place-items-center rounded-lg hover:bg-amber-200/60 dark:hover:bg-amber-900/60" aria-label="Ocultar aviso">

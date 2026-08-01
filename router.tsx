@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import Home from "@/app/page";
 import Login from "@/app/(auth)/login/page";
-import Cadastro from "@/app/(auth)/cadastro/page";
 import EsqueciSenha from "@/app/(auth)/esqueci-minha-senha/page";
 import RedefinirSenha from "@/app/(auth)/redefinir-senha/page";
 import Checkout from "@/app/checkout/page";
@@ -34,7 +33,7 @@ export function AppRouter() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/cadastro" element={<Cadastro />} />
+      <Route path="/cadastro" element={<Navigate to="/checkout" replace />} />
       <Route path="/esqueci-minha-senha" element={<EsqueciSenha />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/checkout" element={<Checkout />} />

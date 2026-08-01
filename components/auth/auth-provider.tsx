@@ -1,10 +1,50 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "@/lib/navigation";
+import {
+  AUTH_SESSION_EXPIRED_EVENT,
+  ApiError,
+  clearCsrfToken,
+  refreshCsrfToken,
+} from "@/lib/api";
 import { authService } from "@/services/auth-service";
-import type { Usuario } from "@/types/api";
+import { clearPendingCheckout } from "@/services/checkout-progress";
+import { clearSubscriptionBlock } from "@/services/subscription-block";
+import type { LoginPayload, Usuario } from "@/types/api";
 
-type AuthContextValue = { usuario: Usuario | null; carregando: boolean; recarregar: () => Promise<void>; sair: () => Promise<void> };
+type AuthContextValue = {
+  usuario: Usuario | null;
+  carregando: boolean;
+  entrar: (payload: LoginPayload) => Promise<Usuario>;
+  recarregar: () => Promise<void>;
+  sair: () => Promise<void>;
+};
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/cadastro",
+  "/esqueci-minha-senha",
+  "/redefinir-senha",
+  "/checkout",
+  "/termos-de-uso",
+  "/politica-de-privacidade",
+];
+
+function isPublicRoute(pathname: string) {
+  return PUBLIC_ROUTES.some((route) => {
+    if (route === "/") return pathname === "/";
+    return pathname.startsWith(route);
+  });
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
@@ -13,9 +53,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const recarregar = useCallback(async () => {
-    try { setUsuario(await authService.me()); }
-    catch { setUsuario(null); }
-    finally { setCarregando(false); }
+    setCarregando(true);
+    try {
+      const currentUser = await authService.me();
+      await refreshCsrfToken();
+      setUsuario(currentUser);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 402) return;
+      clearCsrfToken();
+      setUsuario(null);
+    } finally {
+      setCarregando(false);
+    }
+  }, []);
+
+  const entrar = useCallback(async (payload: LoginPayload) => {
+    const response = await authService.login(payload);
+    clearSubscriptionBlock();
+    setUsuario(response.usuario);
+    setCarregando(false);
+    return response.usuario;
   }, []);
 
   useEffect(() => {
@@ -23,33 +80,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [recarregar]);
 
   useEffect(() => {
-  const rotasPublicas = [
-    "/",
-    "/login",
-    "/cadastro",
-    "/checkout",
-    "/termos-de-uso",
-    "/politica-de-privacidade",
-  ];
+    const handleSessionExpired = () => {
+      clearCsrfToken();
+      clearSubscriptionBlock();
+      setUsuario(null);
+      setCarregando(false);
+      router.replace("/login");
+    };
 
-  const rotaPublica = rotasPublicas.some((rota) => {
-    if (rota === "/") {
-      return pathname === "/";
-    }
-
-    return pathname.startsWith(rota);
-  });
-
-  if (!carregando && !usuario && !rotaPublica) {
-    router.replace("/login");
-  }
-}, [carregando, pathname, router, usuario]);
-
-  const sair = useCallback(async () => {
-    try { await authService.logout(); } finally { setUsuario(null); router.replace("/login"); }
+    window.addEventListener(
+      AUTH_SESSION_EXPIRED_EVENT,
+      handleSessionExpired,
+    );
+    return () =>
+      window.removeEventListener(
+        AUTH_SESSION_EXPIRED_EVENT,
+        handleSessionExpired,
+      );
   }, [router]);
 
-  const value = useMemo(() => ({ usuario, carregando, recarregar, sair }), [usuario, carregando, recarregar, sair]);
+  useEffect(() => {
+    if (!carregando && !usuario && !isPublicRoute(pathname)) {
+      router.replace("/login");
+    }
+  }, [carregando, pathname, router, usuario]);
+
+  const sair = useCallback(async () => {
+    try {
+      await authService.logout();
+    } finally {
+      clearCsrfToken();
+      clearSubscriptionBlock();
+      clearPendingCheckout();
+      setUsuario(null);
+      setCarregando(false);
+      router.replace("/login");
+    }
+  }, [router]);
+
+  const value = useMemo(
+    () => ({ usuario, carregando, entrar, recarregar, sair }),
+    [usuario, carregando, entrar, recarregar, sair],
+  );
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

@@ -1,24 +1,71 @@
-
 import Link from "@/components/router-link";
 import { useEffect, useState } from "react";
-import { ShieldCheck, Users, UserCheck, UserX, Clock3, CreditCard, BadgeDollarSign, Settings2 } from "lucide-react";
+import {
+  BadgeDollarSign,
+  Clock3,
+  CreditCard,
+  Settings2,
+  ShieldCheck,
+  UserCheck,
+  Users,
+  UserX,
+} from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ApiError } from "@/lib/api";
 import { adminService } from "@/services/admin-service";
+import { pagamentosService } from "@/services/pagamentos";
 import type { AdminDashboard } from "@/types/api";
 
 export default function AdminPage() {
   const { usuario } = useAuth();
   const [data, setData] = useState<AdminDashboard | null>(null);
   const [error, setError] = useState("");
+  const [integrationMessage, setIntegrationMessage] = useState("");
+  const [testingIntegration, setTestingIntegration] = useState(false);
 
   useEffect(() => {
     if (!usuario?.administrador) return;
-    adminService.dashboard().then(setData).catch((err) => setError(err instanceof ApiError ? err.message : "Erro ao carregar o painel administrativo."));
+    adminService
+      .dashboard()
+      .then(setData)
+      .catch((err) =>
+        setError(
+          err instanceof ApiError
+            ? err.message
+            : "Erro ao carregar o painel administrativo.",
+        ),
+      );
   }, [usuario]);
 
-  if (!usuario?.administrador) return <Card><p className="text-sm text-red-500">Acesso permitido apenas para administradores.</p></Card>;
+  if (!usuario?.administrador) {
+    return (
+      <Card>
+        <p className="text-sm text-red-500">
+          Acesso permitido apenas para administradores.
+        </p>
+      </Card>
+    );
+  }
+
+  async function testAsaasConnection() {
+    setTestingIntegration(true);
+    setError("");
+    setIntegrationMessage("");
+    try {
+      const response = await pagamentosService.testarConexao();
+      setIntegrationMessage(response.mensagem);
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível testar a integração de pagamentos.",
+      );
+    } finally {
+      setTestingIntegration(false);
+    }
+  }
 
   const cards = [
     ["Total de usuários", data?.total_usuarios ?? 0, Users],
@@ -31,20 +78,79 @@ export default function AdminPage() {
     ["Vencendo em 5 dias", data?.assinaturas_vencendo_5_dias ?? 0, Settings2],
   ] as const;
 
-  return <div className="space-y-6">
-    <div>
-      <p className="text-sm font-semibold text-blue-500">Administração</p>
-      <h1 className="text-3xl font-black">Painel administrativo</h1>
-      <p className="mt-1 text-sm text-slate-500">Gerencie usuários, planos e assinaturas.</p>
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-blue-500">Administração</p>
+          <h1 className="text-3xl font-black">Painel administrativo</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Gerencie usuários, planos e assinaturas.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => void testAsaasConnection()}
+          disabled={testingIntegration}
+        >
+          <CreditCard size={17} />
+          {testingIntegration ? "Testando Asaas..." : "Testar conexão Asaas"}
+        </Button>
+      </div>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
+      {integrationMessage && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+          {integrationMessage}
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map(([label, value, Icon]) => (
+          <Card key={label}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-500">{label}</p>
+                <p className="mt-2 text-3xl font-black">{value}</p>
+              </div>
+              <div className="rounded-2xl bg-blue-100 p-3 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                <Icon size={22} />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Link href="/admin/usuarios">
+          <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg">
+            <h2 className="font-bold">Usuários</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Aprovar, bloquear, cadastrar e editar acessos.
+            </p>
+          </Card>
+        </Link>
+        <Link href="/admin/planos">
+          <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg">
+            <h2 className="font-bold">Planos</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Criar planos, preços e recursos disponíveis.
+            </p>
+          </Card>
+        </Link>
+        <Link href="/admin/assinaturas">
+          <Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg">
+            <h2 className="font-bold">Assinaturas</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Vincular usuários aos planos e controlar vencimentos.
+            </p>
+          </Card>
+        </Link>
+      </div>
     </div>
-    {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div>}
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(([label,value,Icon]) => <Card key={label}><div className="flex items-center justify-between"><div><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-3xl font-black">{value}</p></div><div className="rounded-2xl bg-blue-100 p-3 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300"><Icon size={22}/></div></div></Card>)}
-    </div>
-    <div className="grid gap-4 md:grid-cols-3">
-      <Link href="/admin/usuarios"><Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg"><h2 className="font-bold">Usuários</h2><p className="mt-2 text-sm text-slate-500">Aprovar, bloquear, cadastrar e editar acessos.</p></Card></Link>
-      <Link href="/admin/planos"><Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg"><h2 className="font-bold">Planos</h2><p className="mt-2 text-sm text-slate-500">Criar planos, preços e recursos disponíveis.</p></Card></Link>
-      <Link href="/admin/assinaturas"><Card className="h-full transition hover:-translate-y-0.5 hover:shadow-lg"><h2 className="font-bold">Assinaturas</h2><p className="mt-2 text-sm text-slate-500">Vincular usuários aos planos e controlar vencimentos.</p></Card></Link>
-    </div>
-  </div>;
+  );
 }

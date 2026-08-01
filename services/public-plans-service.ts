@@ -18,7 +18,10 @@ export interface PlanoPublico {
 }
 
 export const publicPlansService = {
-  listar: () => apiRequest<PlanoPublico[]>("/planos/publicos"),
+  listar: () =>
+    apiRequest<PlanoPublico[]>("/planos/publicos", {
+      handleUnauthorized: false,
+    }),
 };
 
 export function codigoDoPlano(plano: PlanoPublico) {

@@ -1282,7 +1282,8 @@ footer {
   }
 
   .nav-login {
-    display: none;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 
   .nav-inner {

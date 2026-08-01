@@ -4,8 +4,19 @@ import { BrowserRouter } from "react-router-dom";
 import "./app/globals.css";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { SubscriptionBlockProvider } from "@/components/billing/subscription-block-provider";
 import { AppRouter } from "@/router";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode><BrowserRouter><ThemeProvider><AuthProvider><AppRouter/></AuthProvider></ThemeProvider></BrowserRouter></React.StrictMode>
+  <React.StrictMode>
+    <BrowserRouter>
+      <ThemeProvider>
+        <SubscriptionBlockProvider>
+          <AuthProvider>
+            <AppRouter />
+          </AuthProvider>
+        </SubscriptionBlockProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  </React.StrictMode>,
 );

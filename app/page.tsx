@@ -2,7 +2,13 @@ import Image from "@/components/app-image";
 import Link from "@/components/router-link";
 import { useEffect, useMemo, useState } from "react";
 import "./landing.css";
-import { publicPlansService, codigoDoPlano, type PlanoPublico } from "@/services/public-plans-service";
+import {
+  codigoDoPlano,
+  duracaoEmMesesDoPlano,
+  periodoDoPlano,
+  publicPlansService,
+  type PlanoPublico,
+} from "@/services/public-plans-service";
 
 type ChatMessage = {
   who: "in" | "out";
@@ -534,8 +540,8 @@ export default function HomePage() {
             <div className="price-grid dynamic-plans">
               {planos.map((plano, index) => {
                 const codigo = codigoDoPlano(plano);
-                const meses = plano.duracao_meses ?? 1;
-                const periodo = meses === 12 ? "por ano" : meses > 1 ? `por ${meses} meses` : "por mês";
+                const meses = duracaoEmMesesDoPlano(plano);
+                const periodo = periodoDoPlano(plano);
                 const valor = Number(plano.valor_mensal || 0);
                 const recursos = [
                   plano.permite_whatsapp && "Controle pelo WhatsApp",
@@ -550,7 +556,7 @@ export default function HomePage() {
                     <h3>{plano.nome}</h3>
                     <div className="desc">{plano.descricao || "Controle financeiro completo e simples."}</div>
                     {Number(plano.dias_gratis || 0) > 0 && <div className="trial-badge">{plano.dias_gratis} dias grátis</div>}
-                    <div className="price-val"><span className="num mono">{valor === 0 ? "Grátis" : valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span><span className="per">/{periodo}</span></div>
+                    <div className="price-val"><span className="num mono">{valor === 0 ? "Grátis" : valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span><span className="per">{periodo}</span></div>
                     <ul className="price-list">
                       {recursos.map((item) => <li key={item}><span className="check">✓</span>{item}</li>)}
                       {meses > 1 && <li><span className="check">✓</span>Acesso por {meses} meses</li>}

@@ -27,6 +27,7 @@ import {
 } from "@/lib/payment-url";
 import { Input } from "@/components/ui/input";
 import {
+  duracaoEmMesesDoPlano,
   publicPlansService,
   type PlanoPublico,
 } from "@/services/public-plans-service";
@@ -137,7 +138,7 @@ export default function FaturasPage() {
           .filter((plan) => plan.ativo)
           .sort(
             (a, b) =>
-              (a.duracao_meses ?? 1) - (b.duracao_meses ?? 1),
+              duracaoEmMesesDoPlano(a) - duracaoEmMesesDoPlano(b),
           ),
       );
     } catch (error) {
@@ -547,7 +548,7 @@ export default function FaturasPage() {
               ) : (
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {planosPagos.map((plan) => {
-                    const duracao = plan.duracao_meses ?? 1;
+                    const duracao = duracaoEmMesesDoPlano(plan);
                     const valorPlano = Number(plan.valor_mensal);
                     const equivalenteMensal = valorPlano / duracao;
                     const selecionado = planoSelecionado === plan.id;

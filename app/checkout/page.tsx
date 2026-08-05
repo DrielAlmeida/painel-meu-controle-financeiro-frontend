@@ -24,6 +24,8 @@ import {
 import { authService } from "@/services/auth-service";
 import { pagamentosService } from "@/services/pagamentos";
 import {
+  duracaoEmMesesDoPlano,
+  periodoDoPlano,
   publicPlansService,
   type PlanoPublico,
 } from "@/services/public-plans-service";
@@ -527,7 +529,7 @@ function CheckoutContent() {
               <div className="mt-4 grid gap-3">
                 {planos.map((item) => {
                   const active = item.id === planId;
-                  const meses = item.duracao_meses ?? 1;
+                  const meses = duracaoEmMesesDoPlano(item);
                   return (
                     <button
                       key={item.id}
@@ -553,11 +555,7 @@ function CheckoutContent() {
                             })}
                           </strong>
                           <span className="block text-xs text-[#9fb4ca]">
-                            {meses === 12
-                              ? "por ano"
-                              : meses > 1
-                                ? `por ${meses} meses`
-                                : "por mês"}
+                            {periodoDoPlano(item)}
                           </span>
                         </div>
                       </div>
